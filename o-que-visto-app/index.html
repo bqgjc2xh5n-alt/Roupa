@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-title" content="O que visto">
+<title>O que visto hoje</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Tema OLED: fundo preto puro (píxeis apagados), texto cinza-claro em vez de branco, sem azul.
+     Destaques em contorno fino, nunca em grandes áreas cheias. Layout: uma coluna de telemóvel. */
+  --paper: #000000;
+  --surface: #000000;
+  --ink: #d6d2c9;
+  --muted: #8b877e;
+  --line: #262626;
+  --accent: #74a98c;
+  --accent-soft: #08120d;
+  --rain: #c9a45f;
+  --rain-soft: #120d05;
+  --star: #c9a45f;
+  --display: "Newsreader", Georgia, "Times New Roman", serif;
+  --body: "Public Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { overscroll-behavior-y: none; }
+button, nav.tabs a, .chip { -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; -webkit-text-size-adjust: 100%; }
+body { padding: calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 84px); max-width: 560px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--display); font-weight: 500; text-wrap: balance; margin: 0; }
+h1 { font-size: 30px; line-height: 1.1; }
+h2 { font-size: 22px; }
+h3 { font-size: 17px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.muted { color: var(--muted); }
+.view { display: none; flex-direction: column; gap: 14px; }
+.view.on { display: flex; }
+header.top { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row label { min-width: 74px; font-weight: 600; font-size: 15px; }
+.temp { font-variant-numeric: tabular-nums; font-family: var(--display); font-size: 26px; min-width: 64px; text-align: right; }
+input[type=range] { flex: 1; accent-color: var(--accent); height: 30px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px; background: transparent; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.seg button.rainy[aria-pressed="true"] { background: transparent; color: var(--rain); box-shadow: inset 0 0 0 1.5px var(--rain); }
+.hint { font-size: 13px; color: var(--muted); }
+.verdict { border-left: 4px solid var(--accent); padding: 4px 0 4px 12px; display: flex; flex-direction: column; gap: 4px; }
+.verdict.rain { border-left-color: var(--rain); }
+.coat { background: var(--accent-soft); border: 1px solid #1a2b21; border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+.verdict.rain + .coat, .coat.rain { background: var(--rain-soft); border-color: #2e2412; }
+.cards { display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.card .head { display: flex; align-items: flex-start; gap: 10px; }
+.num { font-family: var(--display); font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 34px; padding-top: 2px; }
+.formula { font-weight: 600; flex: 1; }
+.sw { display: inline-flex; gap: 3px; margin-right: 6px; vertical-align: -2px; }
+.sw i { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #3a3a3a; display: inline-block; }
+.pieces { font-family: var(--display); font-size: 18px; line-height: 1.35; }
+.meta { display: grid; grid-template-columns: 62px 1fr; gap: 4px 6px; font-size: 14px; color: var(--muted); }
+.meta .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; padding-top: 2px; }
+.meta b { color: var(--ink); font-weight: 500; }
+.tip { font-size: 14px; background: var(--rain-soft); border-left: 2px solid var(--rain); border-radius: 0 8px 8px 0; padding: 8px 10px; }
+.star { border: 0; background: transparent; font-size: 22px; line-height: 1; color: var(--muted); cursor: pointer; padding: 2px 4px; }
+.star[aria-pressed="true"] { color: var(--star); }
+.btn { font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+.btn.primary { background: transparent; color: var(--accent); border-color: var(--accent); }
+.btnrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btnrow .btn[hidden] { display: none; }
+.btnrow:has(.btn[hidden]) { grid-template-columns: 1fr; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 8px calc(env(safe-area-inset-bottom) + 6px); z-index: 5; }
+nav.tabs a { text-decoration: none; color: var(--muted); font-size: 12px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border-radius: 10px; }
+nav.tabs a svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+nav.tabs a[aria-current="page"] { color: var(--accent); }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+.chip { flex: none; font: inherit; font-size: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 8px 12px; cursor: pointer; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: transparent; color: var(--accent); border-color: var(--accent); }
+.chip.r[aria-pressed="true"] { background: transparent; border-color: var(--rain); color: var(--rain); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.now td { background: var(--accent-soft); }
+.tablewrap { overflow-x: auto; }
+ol, ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+input[type=search] { font: inherit; width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) { .card { transition: border-color .2s; } }
+</style>
+</head>
+<body>
+
+<section class="view" id="v-hoje" aria-labelledby="t-hoje">
+  <header class="top">
+    <span class="eyebrow" id="today-label">Aveiro</span>
+    <h1 id="t-hoje">O que visto hoje</h1>
+  </header>
+  <div class="panel">
+    <div class="row"><label for="tm">Manhã</label><input type="range" id="tm" min="0" max="32" step="1"><span class="temp" id="tm-v">10 °C</span></div>
+    <div class="row"><label for="tt">Tarde</label><input type="range" id="tt" min="0" max="36" step="1"><span class="temp" id="tt-v">17 °C</span></div>
+    <div class="seg" role="group" aria-label="Chuva">
+      <button type="button" id="b-seco" aria-pressed="true">Sem chuva</button>
+      <button type="button" id="b-chuva" class="rainy" aria-pressed="false">Chove</button>
+    </div>
+    <div class="hint" id="avg-hint"></div>
+  </div>
+  <div class="verdict" id="verdict"></div>
+  <div class="coat" id="coat"></div>
+  <div class="cards" id="today-cards"></div>
+  <div class="btnrow">
+    <button type="button" class="btn primary" id="b-more">Outros looks</button>
+    <button type="button" class="btn" id="b-all">Ver todos desta faixa</button>
+  </div>
+</section>
+
+<section class="view" id="v-looks" aria-labelledby="t-looks">
+  <header class="top"><span class="eyebrow">168 looks</span><h1 id="t-looks">Todos os looks</h1></header>
+  <div class="chips" id="band-chips" role="group" aria-label="Faixa"></div>
+  <label class="hint" for="q">Procurar por peça, cor ou relógio</label>
+  <input type="search" id="q" placeholder="ex.: parka vermelha, bordô, Tissot">
+  <div class="hint" id="band-info"></div>
+  <div class="cards" id="all-cards"></div>
+</section>
+
+<section class="view" id="v-aveiro" aria-labelledby="t-aveiro">
+  <header class="top"><span class="eyebrow">Calendário</span><h1 id="t-aveiro">Aveiro, mês a mês</h1></header>
+  <p class="muted" style="margin:0">Médias de 1981 a 2010: mínima de manhã e máxima à tarde. Toca num mês para abrir os looks.</p>
+  <div class="tablewrap"><table id="cal"><thead><tr><th>Mês</th><th>Manhã → tarde</th><th>Chuva</th><th>Começa em</th></tr></thead><tbody></tbody></table></div>
+  <div class="panel">
+    <h3>Três coisas do clima de Aveiro</h3>
+    <ul>
+      <li><b>A tarde tem mais 8 °C do que a manhã</b>, quase todo o ano. Veste-te para a hora em que sais e leva uma camada que caiba na mochila.</li>
+      <li><b>Humidade e vento.</b> Perto da ria a sensação é 2 a 3 °C mais fria, sobretudo à chuva.</li>
+      <li><b>Verão moderado.</b> As noites arrefecem, com vento e às vezes nevoeiro: leva o corta-vento mesmo em agosto.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="view" id="v-regras" aria-labelledby="t-regras">
+  <header class="top"><span class="eyebrow">Regras</span><h1 id="t-regras">Antes de sair</h1></header>
+  <div class="panel">
+    <h3>Cinco regras que nunca falham</h3>
+    <ol>
+      <li><b>Couro igual:</b> cinto, calçado e relógio de pele na mesma cor (castanho ou preto).</li>
+      <li><b>Três cores no máximo</b>, com um neutro a dominar. A parka vermelha é a única cor forte do look.</li>
+      <li><b>Chuva:</b> nunca calças bege, nunca camurça, nunca relógio de pele.</li>
+      <li><b>Botas azuis e cinzentas</b> só com chuva ou frio, com marinho, cinza ou jeans azul-escuros.</li>
+      <li><b>Na dúvida, camadas finas:</b> vestem-se para a manhã e tiram-se à tarde.</li>
+    </ol>
+  </div>
+  <div class="panel">
+    <h3>Que casaco levar quando chove</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Temperatura</th><th>Chuviscos</th><th>Chuva forte</th></tr></thead>
+      <tbody>
+        <tr><td class="n">Até 8 °C</td><td>Parka + malha grossa</td><td>Parka + base + malha, botas, luvas</td></tr>
+        <tr><td class="n">8 a 13 °C</td><td>Corta-vento + half-zip + polo</td><td>Parka + uma malha</td></tr>
+        <tr><td class="n">13 a 17 °C</td><td>Corta-vento + malha fina</td><td>Corta-vento + malha fina + chapéu-de-chuva</td></tr>
+        <tr><td class="n">17 a 21 °C</td><td>Corta-vento aberto + polo</td><td>Corta-vento + t-shirt + chapéu-de-chuva</td></tr>
+        <tr><td class="n">21 °C ou mais</td><td>Corta-vento na mochila</td><td>Chapéu-de-chuva</td></tr>
+      </tbody>
+    </table></div>
+    <p class="hint" style="margin:0">Parka = parka marinha ou parka vermelha. O blusão de lã, o bomber e o de couro ficam para dias secos ou chuviscos curtos.</p>
+  </div>
+  <div class="panel">
+    <h3>Abrir já com a temperatura certa</h3>
+    <p class="hint" style="margin:0">Na app Atalhos podes criar um atalho que abre esta página com a temperatura da manhã: acrescenta ao fim do link <b>#t12</b> (12 °C) ou <b>#t12-chuva</b> (12 °C e chuva).</p>
+  </div>
+</section>
+
+<nav class="tabs" aria-label="Secções">
+  <a href="#hoje" data-v="hoje"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Hoje</a>
+  <a href="#looks" data-v="looks"><svg viewBox="0 0 24 24"><path d="M9 3 4 6v4l3 1v10h10V11l3-1V6l-5-3a3 3 0 0 1-6 0Z"/></svg>Looks</a>
+  <a href="#aveiro" data-v="aveiro"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Aveiro</a>
+  <a href="#regras" data-v="regras"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/></svg>Regras</a>
+</nav>
+
+<script>
+const BANDS = [{"id": "ate8", "rain": false, "title": "Inverno: até 8 °C", "intro": "Duas camadas por baixo do casaco e luvas pretas. Se chover, vai à Parte II.", "aveiro": "manhãs e noites de dezembro a fevereiro e as poucas vagas de frio. Um dia inteiro abaixo de 8 °C é raro, por isso usa estes looks quando sais cedo ou voltas tarde.", "sec": "7", "looks": [{"n": 1, "f": "Marinho + creme", "p": "parka Lion of Porches marinha + half-zip creme + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho, luvas pretas", "r": "Seiko diver preto, wayfarer"}, {"n": 2, "f": "Espresso + marinho", "p": "blusão de lã castanho + polo marinho Seissa (forro xadrez) + calças bege", "c": "Ténis camurça castanho, cinto castanho, luvas pretas", "r": "Tissot, tartaruga"}, {"n": 3, "f": "Preto + branco", "p": "blusão de couro preto + camisola de tranças Polo branca + jeans pretos", "c": "Ténis pretos, cinto preto, luvas pretas", "r": "Seiko diver preto, aviator"}, {"n": 4, "f": "Marinho + creme", "p": "parka marinha + camisola de tranças Tommy branca + jeans azul-escuros", "c": "Ténis taupe de sola goma, cinto castanho", "r": "Casio retangular, tartaruga"}, {"n": 5, "f": "Oliva + bege", "p": "bomber caqui + half-zip verde + calças bege", "c": "Ténis camurça castanho, cinto castanho, luvas pretas", "r": "Tissot, aviator"}, {"n": 6, "f": "Espresso + marinho", "p": "blusão de lã castanho + sweat Fred Perry marinho + jeans azul-claros", "c": "Samba cinza-verde, cinto castanho", "r": "Seiko cronógrafo azul, tartaruga"}, {"n": 7, "f": "Azul-bebé + marinho", "p": "hoodie marinho com sherpa + t-shirt BOSS azul-clara + jeans azul-escuros", "c": "Samba cinza-verde", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 8, "f": "Cinza + preto", "p": "blusão de couro preto + half-zip cinzento + jeans pretos", "c": "Ténis pretos, cinto preto, luvas pretas", "r": "Seiko diver preto, aviator"}, {"n": 9, "f": "Espresso + salva", "p": "blusão de lã castanho + half-zip verde + jeans azul-escuros", "c": "Ténis camurça castanho, cinto castanho, luvas pretas", "r": "Tissot, tartaruga"}, {"n": 10, "f": "Bordô + cinza", "p": "parka marinha + half-zip cinzento + polo bordô por baixo + jeans azul-escuros", "c": "Ténis taupe de sola goma, luvas pretas", "r": "Seiko diver preto, wayfarer"}, {"n": 11, "f": "Vermelho + marinho", "p": "parka Tommy Jeans vermelha + sweat Fred Perry marinho + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho, luvas pretas", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 12, "f": "Vermelho + cinza", "p": "parka Tommy Jeans vermelha + half-zip cinzento + jeans pretos", "c": "Ténis pretos, cinto preto, luvas pretas", "r": "Seiko diver preto, aviator"}, {"n": 13, "f": "Vermelho + branco", "p": "parka Tommy Jeans vermelha + camisola de tranças Polo branca + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho, luvas pretas", "r": "Casio retangular, wayfarer"}, {"n": 14, "f": "Vermelho + azul", "p": "parka Tommy Jeans vermelha + cardigan Seissa azul + t-shirt cinzenta por baixo + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho, luvas pretas", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 15, "f": "Marinho + creme (6 a 12 °C)", "p": "parka marinha + half-zip creme + jeans azul-escuros", "c": "Sapatilhas brancas, cinto castanho, luvas pretas", "r": "Casio retangular, wayfarer"}, {"n": 16, "f": "Preto + branco (6 a 12 °C)", "p": "blusão de couro preto + camisola de tranças Polo branca + jeans azul-escuros", "c": "Sapatilhas brancas, cinto preto, luvas pretas", "r": "Seiko diver preto, aviator"}, {"n": 17, "f": "Marinho + branco (noite)", "p": "parka marinha + camisola de tranças Polo branca + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho, luvas pretas", "r": "Casio retangular"}]}, {"id": "8a14", "rain": false, "title": "Frio: 8 a 14 °C", "intro": "Um casaco médio (bomber, blusão de lã ou couro) e uma camisola. Aqui brilham as camisolas de tranças e os half-zips.", "aveiro": "é o inverno típico (tardes de dezembro a fevereiro) e as manhãs de março a maio e de outubro e novembro. É a faixa que mais vais usar.", "sec": "8", "looks": [{"n": 18, "f": "Oliva + marinho", "p": "bomber caqui + malha Zara marinho + jeans azul-escuros", "c": "Samba cinza-verde, cinto castanho", "r": "Tissot, aviator"}, {"n": 19, "f": "Espresso + branco", "p": "blusão de lã castanho + polo branca (leão) + calças bege", "c": "Ténis camurça castanho, cinto castanho", "r": "Casio retangular, tartaruga"}, {"n": 20, "f": "Branco + marinho", "p": "camisola de tranças Tommy branca + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 21, "f": "Bege + creme", "p": "half-zip creme + calças bege", "c": "Ténis camurça castanho, cinto castanho, carteira castanha", "r": "Tissot, tartaruga"}, {"n": 22, "f": "Taupe + azul-bebé", "p": "malha Gecenio taupe + polo azul-claro por baixo + jeans azul-escuros", "c": "Ténis taupe de sola goma, cinto castanho", "r": "Casio retangular, tartaruga"}, {"n": 23, "f": "Oliva + branco", "p": "half-zip verde + polo branca por baixo + jeans azul-claros", "c": "Ténis camurça castanho, cinto castanho", "r": "Casio retangular, wayfarer"}, {"n": 24, "f": "Marinho + azul-bebé", "p": "half-zip Contacto marinho + jeans azul-claros", "c": "Samba cinza-verde, cinto castanho", "r": "Seiko diver preto, wayfarer"}, {"n": 25, "f": "Marinho + creme", "p": "malha Zara marinho + calças bege", "c": "Ténis camurça castanho, cinto castanho", "r": "Tissot, tartaruga"}, {"n": 26, "f": "Bordô + azul-bebé", "p": "polo de malha bordô + jeans azul-claros", "c": "Ténis camurça castanho, cinto castanho", "r": "Casio retangular, tartaruga"}, {"n": 27, "f": "Preto + camel", "p": "blusão de couro preto + t-shirt camel + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto, aviator"}, {"n": 28, "f": "Preto + branco", "p": "blusão de couro preto + polo branca (leão) + jeans azul-escuros", "c": "Ténis pretos, cinto preto", "r": "Seiko cronógrafo azul, aviator"}, {"n": 29, "f": "Cinza + azul", "p": "half-zip cinzento + jeans azul-claros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 30, "f": "Bordô + creme", "p": "camisola de tranças Tommy branca + polo bordô por baixo + jeans azul-escuros", "c": "Ténis camurça castanho, cinto castanho", "r": "Tissot, tartaruga"}, {"n": 31, "f": "Camel + creme", "p": "t-shirt camel + half-zip creme por cima + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Casio retangular, tartaruga"}, {"n": 32, "f": "Oliva + carvão", "p": "bomber caqui + camisola de tranças Polo preta + jeans azul-escuros", "c": "Ténis pretos, cinto preto", "r": "Seiko diver verde, aviator"}, {"n": 33, "f": "Vermelho + creme", "p": "parka Tommy Jeans vermelha (aberta) + half-zip creme + jeans azul-claros", "c": "Sapatilhas brancas, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 34, "f": "Vermelho + marinho", "p": "parka Tommy Jeans vermelha (aberta) + polo marinho Seissa (forro xadrez) + jeans azul-escuros", "c": "Sapatilhas brancas, cinto castanho", "r": "Seiko diver verde, wayfarer"}, {"n": 35, "f": "Marinho + cinza", "p": "hoodie marinho com sherpa + t-shirt cinzenta + jeans azul-claros", "c": "Samba cinza-verde", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 36, "f": "Marinho + camel", "p": "hoodie marinho com sherpa + t-shirt camel + jeans azul-escuros", "c": "Ténis camurça castanho, cinto castanho", "r": "Seiko diver verde, tartaruga"}, {"n": 37, "f": "Branco + marinho", "p": "camisola de tranças Tommy branca + polo marinho Seissa (forro xadrez) por baixo + jeans azul-claros", "c": "Ténis couro marinho, cinto castanho", "r": "Casio retangular, wayfarer"}, {"n": 38, "f": "Oliva + branco", "p": "bomber caqui + camisola de tranças Polo branca + jeans azul-escuros", "c": "Ténis camurça castanho, cinto castanho", "r": "Seiko diver verde, aviator"}, {"n": 39, "f": "Oliva + marinho (10 a 16 °C)", "p": "bomber caqui + half-zip Contacto marinho + calças bege", "c": "Sapatilhas brancas, cinto castanho", "r": "Seiko diver verde, aviator"}, {"n": 40, "f": "Espresso + marinho (10 a 14 °C)", "p": "blusão de lã castanho + half-zip Contacto marinho + jeans azul-claros", "c": "Sapatilhas brancas, cinto castanho", "r": "Tissot, tartaruga"}, {"n": 41, "f": "Preto + bordô (noite)", "p": "blusão de couro preto + polo de malha bordô + jeans pretos", "c": "Ténis pretos, cinto preto, carteira escura", "r": "Rosé skeleton"}, {"n": 42, "f": "Espresso + marinho (noite)", "p": "blusão de lã castanho + malha Zara marinho + calças bege", "c": "Ténis couro marinho, cinto castanho, carteira castanha", "r": "Tissot"}]}, {"id": "14a19", "rain": false, "title": "Fresco: 14 a 19 °C", "intro": "Só uma camisola ou sweat, com casaco leve à mão. É a faixa onde o estilo old money rende mais. Os looks marcados “tira a camada à tarde” são para dias que começam nos 16 °C e aquecem: a malha vai dobrada na mochila.", "aveiro": "tardes de março, abril e novembro e manhãs de verão. Os looks “tira a camada à tarde” servem para os dias que vão dos 12 aos 20 °C.", "sec": "9", "looks": [{"n": 43, "f": "Preto + branco", "p": "camisola de tranças Polo preta + polo branca por baixo + jeans pretos", "c": "Samba cinza-verde, cinto preto", "r": "Casio retangular, wayfarer, pulseira de corrente"}, {"n": 44, "f": "Branco + azul-bebé", "p": "camisola de tranças Tommy branca + jeans azul-claros", "c": "Ténis camurça castanho, cinto castanho", "r": "Tissot, wayfarer"}, {"n": 45, "f": "Marinho + azul-bebé", "p": "sweat Fred Perry marinho + jeans azul-claros", "c": "Samba cinza-verde", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 46, "f": "Taupe + branco", "p": "malha Gecenio taupe + polo branca por baixo + calças bege", "c": "Ténis taupe de sola goma, cinto castanho", "r": "Seiko cronógrafo azul, tartaruga, pulseira de corrente"}, {"n": 47, "f": "Bordô + creme", "p": "polo de malha bordô + calças bege", "c": "Ténis camurça castanho, cinto castanho", "r": "Tissot, tartaruga"}, {"n": 48, "f": "Cinza + preto", "p": "half-zip cinzento + jeans pretos", "c": "Ténis pretos, cinto preto, carteira escura", "r": "Seiko diver preto, aviator, pulseira de elos preta/aço"}, {"n": 49, "f": "Marinho + branco", "p": "polo marinho (gola listrada) + jeans azul-claros", "c": "Ténis couro marinho, cinto castanho", "r": "Casio retangular, wayfarer, pulseira de corrente"}, {"n": 50, "f": "Camel + salva", "p": "bomber caqui + t-shirt camel + jeans azul-escuros", "c": "Ténis camurça castanho, cinto castanho", "r": "Seiko diver verde, aviator"}, {"n": 51, "f": "Cinza + preto", "p": "corta-vento Tommy preto + sweat Pepe Jeans cinzenta + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko cronógrafo azul, aviator"}, {"n": 52, "f": "Cinza + azul", "p": "sweat Pepe Jeans cinzenta + jeans azul-escuros", "c": "Samba cinza-verde", "r": "Seiko diver preto, wayfarer"}, {"n": 53, "f": "Oliva + marinho", "p": "t-shirt Levi's oliva + jeans azul-escuros + sweat Fred Perry marinho por cima", "c": "Ténis camurça castanho, cinto castanho", "r": "Seiko diver verde, tartaruga, pulseira de corrente"}, {"n": 54, "f": "Oliva + carvão", "p": "t-shirt Levi's oliva + half-zip cinzento por cima + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver verde, aviator, pulseira de elos preta/aço"}, {"n": 55, "f": "Azul-bebé + marinho", "p": "t-shirt BOSS azul-clara + malha Zara marinho + calças bege", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 56, "f": "Taupe + bordô", "p": "malha Gecenio taupe + polo bordô por baixo + calças bege", "c": "Ténis taupe de sola goma, cinto castanho", "r": "Tissot, tartaruga"}, {"n": 57, "f": "Preto + camel", "p": "camisola de tranças Polo preta + t-shirt camel por baixo + jeans azul-claros", "c": "Sapatilhas brancas, cinto preto", "r": "Seiko diver preto, aviator"}, {"n": 58, "f": "Azul + branco", "p": "cardigan Seissa azul + polo branca (leão) + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer, pulseira de corrente"}, {"n": 59, "f": "Azul + cinza", "p": "cardigan Seissa azul + t-shirt cinzenta + jeans pretos", "c": "Samba cinza-verde, cinto preto", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 60, "f": "Marinho + bege", "p": "polo marinho Seissa (forro xadrez) + calças bege", "c": "Ténis camurça castanho, cinto castanho", "r": "Tissot, tartaruga"}, {"n": 61, "f": "Branco + preto", "p": "camisola de tranças Polo branca + jeans pretos", "c": "Samba cinza-verde, cinto preto", "r": "Seiko diver preto, aviator"}, {"n": 62, "f": "Camel + azul", "p": "cardigan Seissa azul + t-shirt camel + jeans azul-claros", "c": "Sapatilhas brancas, cinto castanho", "r": "Casio retangular, tartaruga"}, {"n": 63, "f": "Marinho + creme (tira a camada à tarde)", "p": "polo marinho (gola listrada) + calças bege + malha Zara marinho", "c": "Ténis couro marinho, cinto castanho", "r": "Casio retangular, wayfarer"}, {"n": 64, "f": "Azul-bebé + taupe (tira a camada à tarde)", "p": "t-shirt BOSS azul-clara + jeans azul-escuros + malha Gecenio taupe", "c": "Ténis camurça castanho, cinto castanho", "r": "Seiko diver preto, tartaruga, pulseira de corrente"}, {"n": 65, "f": "Azul-bebé + marinho (tira a camada à tarde)", "p": "polo azul-claro (gola de ganga) + jeans azul-escuros + sweat Fred Perry marinho", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 66, "f": "Branco + marinho (tira a camada à tarde)", "p": "polo branca (leão) + jeans azul-escuros + camisola de tranças Tommy branca", "c": "Samba cinza-verde, cinto castanho", "r": "Casio retangular, wayfarer, pulseira de corrente"}, {"n": 67, "f": "Camel + azul (tira a camada à tarde)", "p": "t-shirt camel + calças bege + cardigan Seissa azul com fecho", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul, tartaruga, pulseira de corrente"}, {"n": 68, "f": "Marinho + azul-bebé (tira a camada à tarde)", "p": "polo marinho (gola listrada) + jeans azul-claros + malha Zara marinho", "c": "Samba cinza-verde", "r": "Seiko diver preto, wayfarer"}, {"n": 69, "f": "Marinho + azul-bebé (13 a 18 °C)", "p": "malha Zara marinho + jeans azul-claros", "c": "Sapatilhas brancas, cinto castanho", "r": "Seiko diver preto, tartaruga"}, {"n": 70, "f": "Branco + bege (14 a 19 °C)", "p": "camisola de tranças Tommy branca + calças bege", "c": "Sapatilhas brancas, cinto castanho", "r": "Casio retangular, tartaruga, pulseira de corrente"}, {"n": 71, "f": "Cinza + marinho (14 a 19 °C)", "p": "half-zip cinzento + jeans azul-escuros", "c": "Sapatilhas brancas, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer, pulseira de corrente"}, {"n": 72, "f": "Bordô + preto (13 a 18 °C)", "p": "polo de malha bordô + jeans pretos", "c": "Sapatilhas brancas, cinto preto", "r": "Seiko diver preto, aviator, pulseira de elos preta/aço"}, {"n": 73, "f": "Preto + branco (noite)", "p": "camisola de tranças Tommy branca + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Rosé skeleton, pulseira de elos preta/aço"}, {"n": 74, "f": "Oliva + branco (noite)", "p": "bomber caqui + polo branca (leão) + jeans azul-escuros", "c": "Ténis camurça castanho, cinto castanho, carteira castanha", "r": "Tissot"}, {"n": 75, "f": "Taupe + branco (noite)", "p": "malha Gecenio taupe + polo branca por baixo + jeans azul-escuros", "c": "Ténis camurça castanho, cinto castanho", "r": "Tissot"}, {"n": 76, "f": "Preto + bordô (noite)", "p": "camisola de tranças Polo preta + polo bordô por baixo + jeans pretos", "c": "Ténis pretos, cinto preto, carteira escura", "r": "Rosé skeleton, pulseira de elos preta/aço"}]}, {"id": "19a24", "rain": false, "title": "Ameno: 19 a 24 °C", "intro": "Polos e t-shirts, com um casaco leve só para a noite. Os óculos de sol entram em quase todos os looks. Os looks marcados “tira a camada à tarde” são para manhãs frescas que chegam aos 25 °C: o corta-vento ou o bomber vai na mochila, e o blusão de lã, o de couro e as parkas ficam em casa.", "aveiro": "tardes de maio, junho, setembro e outubro. Mesmo nestes dias, perto da ria a noite arrefece e costuma ter vento: leva o corta-vento ou uma malha fina.", "sec": "10", "looks": [{"n": 77, "f": "Branco + bege", "p": "polo branca (leão) + calças bege", "c": "Ténis camurça castanho, cinto castanho", "r": "Tissot, tartaruga, pulseira de corrente"}, {"n": 78, "f": "Marinho + bege", "p": "polo marinho (gola listrada) + calças bege", "c": "Samba cinza-verde", "r": "Casio retangular, wayfarer"}, {"n": 79, "f": "Azul-bebé + bege", "p": "polo azul-claro (gola de ganga) + calças bege", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer, pulseira de corrente"}, {"n": 80, "f": "Camel + azul", "p": "t-shirt camel + jeans azul-claros", "c": "Ténis couro marinho, cinto castanho", "r": "Tissot, tartaruga"}, {"n": 81, "f": "Oliva + bege", "p": "t-shirt Levi's oliva + calças bege", "c": "Ténis taupe de sola goma", "r": "Seiko diver verde, tartaruga, pulseira de corrente"}, {"n": 82, "f": "Azul-bebé + marinho", "p": "t-shirt BOSS azul-clara + jeans azul-escuros", "c": "Ténis camurça castanho, cinto castanho", "r": "Seiko diver preto, wayfarer"}, {"n": 83, "f": "Cinza + azul", "p": "t-shirt cinzenta + jeans azul-claros", "c": "Samba cinza-verde", "r": "Casio retangular, wayfarer, pulseira de corrente"}, {"n": 84, "f": "Oliva + preto", "p": "t-shirt Levi's oliva + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver verde, aviator, pulseira de elos preta/aço"}, {"n": 85, "f": "Preto + azul-bebé", "p": "corta-vento Tommy preto + t-shirt BOSS azul-clara + jeans azul-escuros", "c": "Ténis pretos", "r": "Seiko diver preto, aviator, pulseira de elos preta/aço"}, {"n": 86, "f": "Branco + preto", "p": "polo branca (leão) + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto, aviator"}, {"n": 87, "f": "Branco + marinho", "p": "polo branca (leão) + jeans azul-escuros", "c": "Samba cinza-verde, cinto castanho", "r": "Casio retangular, wayfarer, pulseira de corrente"}, {"n": 88, "f": "Camel + creme", "p": "t-shirt camel + calças bege (tom sobre tom)", "c": "Ténis taupe de sola goma", "r": "Seiko cronógrafo azul, tartaruga"}, {"n": 89, "f": "Branco + preto (tira a camada à tarde)", "p": "polo branca (leão) + jeans azul-escuros + corta-vento Tommy preto", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko diver preto, aviator, pulseira de corrente"}, {"n": 90, "f": "Camel + salva (tira a camada à tarde)", "p": "t-shirt camel + jeans azul-claros + bomber caqui", "c": "Samba cinza-verde", "r": "Seiko cronógrafo azul, aviator"}, {"n": 91, "f": "Oliva + preto (tira a camada à tarde)", "p": "t-shirt Levi's oliva + jeans azul-claros + corta-vento Tommy preto", "c": "Ténis taupe de sola goma", "r": "Seiko diver verde, aviator, pulseira de elos preta/aço"}, {"n": 92, "f": "Cinza + oliva (tira a camada à tarde)", "p": "t-shirt cinzenta + jeans pretos + bomber caqui", "c": "Ténis pretos, cinto preto", "r": "Seiko diver verde, aviator"}, {"n": 93, "f": "Camel + preto (19 a 24 °C)", "p": "t-shirt camel + jeans pretos", "c": "Sapatilhas brancas, cinto preto", "r": "Seiko diver preto, aviator, pulseira de elos preta/aço"}, {"n": 94, "f": "Azul-bebé + marinho (19 a 24 °C)", "p": "polo azul-claro (gola de ganga) + jeans azul-escuros", "c": "Sapatilhas brancas, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer, pulseira de corrente"}]}, {"id": "calor", "rain": false, "title": "Calor, com calças: 24 °C ou mais", "intro": "Peças leves, cores claras e relógio de aço em vez de pele. Os óculos de sol são quase obrigatórios.", "aveiro": "só nas tardes quentes de julho a setembro e nas ondas de calor. Leva uma camada para a noite.", "sec": "11", "looks": [{"n": 95, "f": "Branco + azul-bebé", "p": "polo branca (leão) + jeans azul-claros", "c": "Ténis camurça castanho, cinto castanho", "r": "Seiko diver preto, wayfarer, pulseira de corrente"}, {"n": 96, "f": "Azul-bebé + bege", "p": "t-shirt BOSS azul-clara + calças bege", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer, pulseira de corrente"}, {"n": 97, "f": "Camel + azul", "p": "t-shirt camel + jeans azul-escuros", "c": "Ténis taupe de sola goma, cinto castanho", "r": "Seiko cronógrafo azul, tartaruga"}, {"n": 98, "f": "Azul-bebé + azul", "p": "polo azul-claro (gola de ganga) + jeans azul-claros", "c": "Samba cinza-verde", "r": "Seiko diver preto, wayfarer, pulseira de corrente"}, {"n": 99, "f": "Oliva + azul", "p": "t-shirt Levi's oliva + jeans azul-claros", "c": "Samba cinza-verde", "r": "Seiko diver verde, tartaruga"}, {"n": 100, "f": "Cinza + preto", "p": "t-shirt cinzenta + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto, wayfarer, pulseira de elos preta/aço"}, {"n": 101, "f": "Marinho + azul", "p": "polo marinho (gola listrada) + jeans azul-escuros", "c": "Sapatilhas brancas, cinto castanho", "r": "Seiko diver preto, aviator"}, {"n": 102, "f": "Cinza + marinho", "p": "t-shirt cinzenta + jeans azul-escuros", "c": "Samba cinza-verde", "r": "Seiko cronógrafo azul, wayfarer, pulseira de corrente"}]}, {"id": "calcoes", "rain": false, "title": "Calor, com calções: 24 °C ou mais", "intro": "Cima neutro com os calções chino verdes (branco, marinho, camel, cinza). Os de ganga 401 e os chino beges vão com quase tudo. Sapatilhas ou ténis limpos, relógio de aço e óculos de sol.", "aveiro": "tardes de julho a setembro. Ao fim do dia, com vento e nevoeiro, troca para calças ou leva um corta-vento.", "sec": "12", "looks": [{"n": 103, "f": "Branco + salva", "p": "polo branca (leão) + calções chino verdes", "c": "Ténis camurça castanho, cinto castanho", "r": "Seiko diver preto, tartaruga, pulseira de corrente"}, {"n": 104, "f": "Camel + salva", "p": "t-shirt camel + calções chino verdes", "c": "Samba cinza-verde", "r": "Seiko cronógrafo azul, tartaruga"}, {"n": 105, "f": "Marinho + salva", "p": "polo marinho (gola listrada) + calções chino verdes", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko diver preto, wayfarer, pulseira de corrente"}, {"n": 106, "f": "Cinza + salva", "p": "t-shirt cinzenta + calções chino verdes", "c": "Samba cinza-verde", "r": "Seiko diver verde, wayfarer"}, {"n": 107, "f": "Branco + azul", "p": "polo branca (leão) + calções de ganga 401", "c": "Ténis camurça castanho, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer, pulseira de corrente"}, {"n": 108, "f": "Azul-bebé + azul", "p": "t-shirt BOSS azul-clara + calções de ganga 401", "c": "Samba cinza-verde", "r": "Seiko diver preto, wayfarer"}, {"n": 109, "f": "Branco + bege", "p": "polo branca (leão) + calções chino beges", "c": "Ténis camurça castanho, cinto castanho", "r": "Seiko diver preto, tartaruga, pulseira de corrente"}, {"n": 110, "f": "Marinho + bege", "p": "polo marinho (gola listrada) + calções chino beges", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul, wayfarer"}, {"n": 111, "f": "Azul-bebé + bege", "p": "t-shirt BOSS azul-clara + calções chino beges", "c": "Samba cinza-verde", "r": "Seiko diver preto, wayfarer, pulseira de corrente"}, {"n": 112, "f": "Oliva + bege", "p": "t-shirt Levi's oliva + calções chino beges", "c": "Ténis taupe de sola goma", "r": "Seiko diver verde, tartaruga"}, {"n": 113, "f": "Camel + creme", "p": "t-shirt camel + calções chino beges, tom sobre tom", "c": "Ténis camurça castanho, cinto castanho", "r": "Seiko cronógrafo azul, tartaruga, pulseira de corrente"}, {"n": 114, "f": "Cinza + bege", "p": "t-shirt cinzenta + calções chino beges", "c": "Ténis couro marinho", "r": "Seiko diver preto, wayfarer"}, {"n": 115, "f": "Camel + creme (24 °C ou mais)", "p": "t-shirt camel + calções chino beges", "c": "Sapatilhas brancas", "r": "Seiko diver preto, tartaruga, pulseira de corrente"}, {"n": 116, "f": "Marinho + branco (24 °C ou mais)", "p": "polo marinho (gola listrada) + calções de ganga 401", "c": "Sapatilhas brancas", "r": "Seiko cronógrafo azul, wayfarer, pulseira de corrente"}]}, {"id": "c-ate8", "rain": true, "title": "Chuva fria: até 8 °C", "intro": "Parka marinha com duas camadas por baixo (base + malha), botas ou ténis pretos e luvas. Com chuva e vento a sensação fica 2 a 3 °C abaixo do que diz a previsão, por isso veste-te para o número mais baixo.", "aveiro": "Em Aveiro é raro um dia inteiro de chuva abaixo de 8 °C: estes looks são para manhãs de inverno e vagas de frio.", "sec": "14.1", "looks": [{"n": 117, "f": "Marinho + cinza", "p": "parka Lion of Porches marinha + half-zip cinzento + jeans pretos", "c": "Ténis pretos, cinto preto, luvas pretas", "r": "Seiko diver preto", "tip": "Se aquecer acima de 12 °C, abre a parka"}, {"n": 118, "f": "Marinho + salva", "p": "parka marinha + half-zip verde + jeans pretos", "c": "Ténis pretos, cinto preto, luvas pretas", "r": "Seiko diver preto", "tip": "Se descer abaixo de 4 °C, junta o polo branca por baixo do half-zip"}, {"n": 119, "f": "Marinho + creme", "p": "parka marinha + half-zip creme + polo marinho Seissa (forro xadrez) por baixo + jeans azul-escuros", "c": "Botas azuis e cinzentas, cinto castanho, luvas pretas", "r": "Seiko diver preto", "tip": "Se subir para 12 °C, abre a parka. Acima de 14 °C, tira o half-zip e fica polo + parka aberta"}, {"n": 120, "f": "Marinho + branco", "p": "parka marinha + camisola de tranças Polo branca + t-shirt cinzenta por baixo + jeans pretos", "c": "Ténis pretos, cinto preto, luvas pretas", "r": "Seiko diver preto", "tip": "Se descer para 3 °C, fecha o capuz e põe as luvas. A tranças é a camada mais quente que tens"}, {"n": 121, "f": "Marinho + cinza", "p": "parka marinha + sweat Pepe Jeans cinzenta + t-shirt cinzenta por baixo + jeans azul-escuros", "c": "Botas azuis e cinzentas, cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Se aquecer, abre a parka e sobe as mangas da sweat por dentro"}, {"n": 122, "f": "Marinho + salva", "p": "parka marinha + half-zip verde + polo branca (leão) por baixo + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho, luvas pretas", "r": "Seiko diver verde", "tip": "Se aquecer à tarde, desce o fecho do half-zip e deixa a gola branca à vista"}, {"n": 123, "f": "Marinho + vermelho", "p": "parka Tommy Jeans vermelha + malha Zara marinho + jeans azul-escuros", "c": "Botas azuis e cinzentas", "r": "G-Shock", "tip": "Se ficar abafado, abre a parka. Abaixo de 4 °C, junta o polo marinho Seissa por baixo da malha"}, {"n": 124, "f": "Vermelho + cinza", "p": "parka Tommy Jeans vermelha + half-zip cinzento + polo marinho Seissa (forro xadrez) por baixo + jeans azul-escuros", "c": "Botas azuis e cinzentas, cinto castanho, luvas pretas", "r": "Seiko cronógrafo azul", "tip": "Se subir acima de 10 °C, abre a parka; acima de 13 °C, tira o half-zip"}]}, {"id": "c-8a13", "rain": true, "title": "Chuva fresca: 8 a 13 °C", "intro": "A faixa mais difícil. Se a chuva for forte ou durar o dia todo, parka com uma só camada por baixo. Se forem aguaceiros, corta-vento com half-zip e polo, que vais tirando.", "aveiro": "Em Aveiro é o dia de chuva mais comum, de novembro a fevereiro.", "sec": "14.2", "looks": [{"n": 125, "f": "Preto + marinho", "p": "corta-vento Tommy preto + malha Zara marinho + jeans azul-escuros", "c": "Botas azuis e cinzentas", "r": "Seiko diver preto", "tip": "Acima de 15 °C, a malha vai para a mochila e fica só o corta-vento por cima de uma t-shirt"}, {"n": 126, "f": "Marinho + cinza", "p": "parka marinha + sweat Pepe Jeans cinzenta + jeans azul-escuros", "c": "Ténis pretos", "r": "Seiko cronógrafo azul", "tip": "Acima de 13 °C, abre a parka"}, {"n": 127, "f": "Verde + cinza (casual)", "p": "softshell Aston Martin F1 + t-shirt cinzenta + jeans pretos", "c": "Ténis pretos", "r": "G-Shock", "tip": "Abaixo de 11 °C, junta o half-zip cinzento por baixo (look 133)"}, {"n": 128, "f": "Marinho + vermelho", "p": "parka Tommy Jeans vermelha + half-zip Contacto marinho + jeans azul-escuros", "c": "Botas azuis e cinzentas", "r": "Seiko cronógrafo azul", "tip": "Casual. Se aquecer, abre a parka"}, {"n": 129, "f": "Preto + cinza", "p": "corta-vento Tommy preto + half-zip cinzento + polo branca (leão) por baixo + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto", "tip": "Acima de 16 °C, tira o half-zip e fica polo + corta-vento (como o look 89)"}, {"n": 130, "f": "Preto + azul-bebé", "p": "corta-vento Tommy preto + half-zip Contacto marinho + t-shirt BOSS azul-clara por baixo + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Se aquecer, o half-zip vai para a mochila. Se descer abaixo de 9 °C, troca o corta-vento pela parka"}, {"n": 131, "f": "Taupe + azul-bebé", "p": "parka marinha + malha Gecenio taupe + polo azul-claro por baixo + jeans azul-escuros", "c": "Botas azuis e cinzentas, cinto castanho", "r": "Seiko diver preto", "tip": "Acima de 13 °C, deixa a parka aberta. Com chuva forte, fecha até cima"}, {"n": 132, "f": "Preto + creme", "p": "blusão de couro preto + half-zip creme + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto", "tip": "Só para chuviscos curtos. Se a previsão disser chuva forte, troca o blusão pelo corta-vento"}, {"n": 133, "f": "Verde + cinza (casual)", "p": "softshell Aston Martin F1 + half-zip cinzento + t-shirt cinzenta por baixo + jeans pretos", "c": "Ténis pretos", "r": "G-Shock", "tip": "Bom para vento forte. Se aquecer, tira o half-zip e fica como o look 127"}, {"n": 134, "f": "Bordô + cinza", "p": "corta-vento Tommy preto + sweat Pepe Jeans cinzenta + polo bordô por baixo + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto", "tip": "A listra bordô da sweat repete o polo. Acima de 15 °C, tira a sweat"}, {"n": 135, "f": "Vermelho + branco", "p": "parka Tommy Jeans vermelha + camisola de tranças Polo branca + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver verde", "tip": "Acima de 12 °C, abre a parka. Com chuva forte, fecha-a: a tranças branca não pode molhar"}, {"n": 136, "f": "Vermelho + marinho", "p": "parka Tommy Jeans vermelha + hoodie marinho com sherpa + jeans azul-escuros", "c": "Botas azuis e cinzentas", "r": "G-Shock", "tip": "O hoodie vai sempre por dentro da parka, com o capuz para fora. Acima de 11 °C, troca o hoodie pela malha Zara"}]}, {"id": "c-13a17", "rain": true, "title": "Chuva amena: 13 a 17 °C", "intro": "A parka já é quente demais. Corta-vento por cima de uma malha fina ou half-zip. O bomber e o couro só se for chuvisco.", "aveiro": "Em Aveiro: chuva de outono e de primavera (outubro, novembro, março, abril).", "sec": "14.3", "looks": [{"n": 137, "f": "Preto + camel", "p": "corta-vento Tommy preto + half-zip creme + t-shirt camel por baixo + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Acima de 18 °C, tira o half-zip e fica t-shirt camel + corta-vento"}, {"n": 138, "f": "Oliva + carvão", "p": "corta-vento Tommy preto + half-zip verde + polo branca (leão) por baixo + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver verde", "tip": "Se arrefecer ao fim do dia, sobe o fecho do half-zip até cima"}, {"n": 139, "f": "Marinho + branco", "p": "corta-vento Tommy preto + sweat Fred Perry marinho + polo branca (leão) por baixo + jeans azul-escuros", "c": "Sapatilhas brancas (só chuvisco), cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Se a chuva apertar, troca as sapatilhas brancas pelos ténis pretos"}, {"n": 140, "f": "Oliva + branco", "p": "bomber caqui + camisola de tranças Tommy branca + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko diver verde", "tip": "Só com chuvisco. Com chuva a sério, a tranças branca fica por baixo do corta-vento"}, {"n": 141, "f": "Azul-bebé + marinho", "p": "corta-vento Tommy preto + malha Zara marinho + polo azul-claro (gola de ganga) por baixo + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Acima de 18 °C, a malha vai para a mochila e fica polo + corta-vento"}, {"n": 142, "f": "Preto + branco", "p": "corta-vento Tommy preto + camisola de tranças Polo preta + polo branca (leão) por baixo + jeans azul-escuros", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto", "tip": "Acima de 17 °C, a tranças vai para a mochila e fica polo + corta-vento"}, {"n": 143, "f": "Azul + branco", "p": "corta-vento Tommy preto + cardigan Seissa azul + polo branca (leão) por baixo + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Se aquecer, abre o cardigan; acima de 18 °C, vai para a mochila"}, {"n": 144, "f": "Cinza + marinho", "p": "corta-vento Tommy preto + half-zip cinzento + t-shirt BOSS azul-clara por baixo + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Acima de 17 °C, o half-zip vai para a mochila e fica t-shirt + corta-vento"}]}, {"id": "c-17a21", "rain": true, "title": "Chuva morna: 17 a 21 °C", "intro": "Só uma base (polo ou t-shirt) e o corta-vento aberto por cima. Nada de malhas, porque com humidade abafam.", "aveiro": "Em Aveiro: chuva de outubro, maio ou junho.", "sec": "14.4", "looks": [{"n": 145, "f": "Preto + branco", "p": "corta-vento Tommy preto + polo branca (leão) + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko diver preto", "tip": "Se arrefecer à noite, leva a malha Zara marinho dobrada na mochila"}, {"n": 146, "f": "Preto + camel", "p": "corta-vento Tommy preto + t-shirt camel + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto", "tip": "Se abrir o sol, o corta-vento vai para a mochila e fica t-shirt camel + jeans pretos"}, {"n": 147, "f": "Preto + marinho", "p": "corta-vento Tommy preto + polo marinho (gola listrada) + jeans azul-escuros", "c": "Sapatilhas brancas (só chuvisco), cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Com chuva forte, troca as sapatilhas pelos ténis couro marinho"}, {"n": 148, "f": "Cinza + preto", "p": "corta-vento Tommy preto + t-shirt cinzenta + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto", "tip": "Se arrefecer abaixo de 16 °C, junta o half-zip cinzento por baixo"}, {"n": 149, "f": "Oliva + preto", "p": "corta-vento Tommy preto + t-shirt Levi's oliva + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko diver verde", "tip": "Se abrir o sol, o corta-vento vai para a mochila e fica t-shirt oliva + jeans escuros"}, {"n": 150, "f": "Preto + bordô", "p": "corta-vento Tommy preto + polo de malha bordô + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto", "tip": "Se arrefecer à noite, fecha o corta-vento: o polo de malha aguenta até 16 °C"}, {"n": 151, "f": "Preto + azul-bebé", "p": "corta-vento Tommy preto + polo azul-claro (gola de ganga) + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Se abrir o sol, o corta-vento vai para a mochila"}, {"n": 152, "f": "Preto + marinho", "p": "corta-vento Tommy preto + polo marinho Seissa (forro xadrez) + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko diver verde", "tip": "Abaixo de 17 °C, fecha o corta-vento até cima"}]}, {"id": "c-21", "rain": true, "title": "Aguaceiros quentes: 21 °C ou mais", "intro": "Chuva de fim de verão ou de outubro quente. Aqui o casaco aquece mais do que protege: leva o corta-vento dobrado na mochila e usa chapéu-de-chuva.", "aveiro": "Em Aveiro é raro: em julho e agosto chove dois dias por mês. Serve para os aguaceiros de setembro.", "sec": "14.5", "looks": [{"n": 153, "f": "Azul-bebé + marinho", "p": "t-shirt BOSS azul-clara + jeans azul-escuros + corta-vento Tommy preto na mochila", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Veste o corta-vento só no aguaceiro ou se o vento rodar"}, {"n": 154, "f": "Branco + preto", "p": "polo branca (leão) + jeans pretos + corta-vento Tommy preto na mochila", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto", "tip": "Com sol entre aguaceiros, junta o aviator"}, {"n": 155, "f": "Marinho + azul", "p": "polo marinho (gola listrada) + calções de ganga 401 + corta-vento Tommy preto na mochila", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko diver preto", "tip": "Com calor e chuva, os calções secam mais depressa do que as calças. Abaixo de 21 °C, volta às calças"}, {"n": 156, "f": "Camel + azul", "p": "t-shirt camel + calções de ganga 401 + corta-vento Tommy preto na mochila", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko diver verde", "tip": "Os calções secam depressa. Se o aguaceiro trouxer vento, veste o corta-vento"}, {"n": 157, "f": "Oliva + preto", "p": "t-shirt Levi's oliva + jeans pretos + corta-vento Tommy preto na mochila", "c": "Ténis pretos, cinto preto", "r": "Seiko diver verde", "tip": "Se ao fim da tarde descer abaixo de 20 °C, veste o corta-vento fechado"}, {"n": 158, "f": "Cinza + azul", "p": "t-shirt cinzenta + calções de ganga 401 + corta-vento Tommy preto na mochila", "c": "Ténis pretos", "r": "Seiko diver preto", "tip": "Se o vento rodar ao fim do dia, veste o corta-vento"}, {"n": 159, "f": "Azul-bebé + marinho", "p": "polo azul-claro (gola de ganga) + jeans azul-escuros + corta-vento Tommy preto na mochila", "c": "Sapatilhas brancas (só aguaceiros curtos), cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Se chover forte, troca as sapatilhas pelos ténis couro marinho"}, {"n": 160, "f": "Oliva + azul", "p": "t-shirt Levi's oliva + calções de ganga 401 + corta-vento Tommy preto na mochila", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko diver verde", "tip": "Abaixo de 21 °C ao fim do dia, veste o corta-vento"}]}, {"id": "c-muda", "rain": true, "title": "Dias que mudam: chuva com a temperatura a subir ou a descer", "intro": "Quando a diferença entre a manhã e a tarde passa os 8 °C, usa três camadas finas em vez de uma grossa. Veste-te para a parte mais fria e mais chuvosa do dia e vai tirando. O que tiras tem de caber na mochila.", "aveiro": "Em Aveiro é o mais comum: com chuva, a tarde costuma ter mais 6 a 8 °C do que a manhã.", "sec": "14.6", "looks": [{"n": 161, "f": "De 6 a 15 °C, chuva de manhã", "p": "parka marinha + half-zip Contacto marinho + polo branca (leão) por baixo + jeans azul-escuros", "c": "Botas azuis e cinzentas, cinto castanho", "r": "Seiko diver preto", "tip": "Manhã: tudo fechado. Tarde: half-zip na mochila e parka aberta por cima do polo"}, {"n": 162, "f": "De 10 a 20 °C, aguaceiros", "p": "corta-vento Tommy preto + half-zip cinzento + polo marinho (gola listrada) por baixo + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Manhã: as três camadas. Meio-dia: half-zip na mochila. Se abrir o sol: corta-vento também"}, {"n": 163, "f": "De 14 a 22 °C, chuva que passa a sol", "p": "corta-vento Tommy preto + malha Gecenio taupe + polo branca (leão) por baixo + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko diver preto", "tip": "Tarde: fica só o polo branco, com a tartaruga na mochila para quando abrir"}, {"n": 164, "f": "De 12 a 5 °C, o dia piora", "p": "parka marinha + sweat Fred Perry marinho + polo branca (leão) por baixo + jeans azul-escuros", "c": "Botas azuis e cinzentas, cinto castanho, luvas pretas no bolso", "r": "Seiko diver preto", "tip": "Sai com a parka aberta. À noite, fecha tudo, capuz e luvas"}, {"n": 165, "f": "De 8 a 17 °C, aguaceiros com abertas", "p": "parka Tommy Jeans vermelha + cardigan Seissa azul + polo branca (leão) por baixo + jeans azul-escuros", "c": "Ténis couro marinho, cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Manhã: parka fechada. Tarde: parka aberta e cardigan desapertado. Se abrir o sol, a parka vai no braço e fica polo + cardigan"}, {"n": 166, "f": "De 7 a 16 °C, chuva forte de manhã", "p": "parka marinha + malha Zara marinho + polo azul-claro (gola de ganga) por baixo + jeans azul-escuros", "c": "Botas azuis e cinzentas, cinto castanho", "r": "Seiko cronógrafo azul", "tip": "Manhã: tudo fechado. Tarde: malha na mochila e parka aberta por cima do polo"}, {"n": 167, "f": "De 12 a 21 °C, aguaceiros soltos", "p": "corta-vento Tommy preto + sweat Pepe Jeans cinzenta + t-shirt camel por baixo + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko diver preto", "tip": "Meio-dia: sweat na mochila. Tarde: t-shirt camel com o corta-vento aberto"}, {"n": 168, "f": "De 9 a 18 °C, chuva que vai e vem", "p": "corta-vento Tommy preto + half-zip Contacto marinho + t-shirt cinzenta por baixo + jeans pretos", "c": "Ténis pretos, cinto preto", "r": "Seiko cronógrafo azul", "tip": "Manhã: fecho do half-zip em cima. Tarde: half-zip na mochila"}]}];
+const MONTHS = [
+  ["Janeiro",6,14,11,"8a14","c-8a13"],["Fevereiro",7,15,10,"8a14","c-8a13"],["Março",9,17,7,"8a14","c-8a13"],
+  ["Abril",10,18,12,"14a19","c-13a17"],["Maio",13,20,10,"14a19","c-13a17"],["Junho",15,23,4,"19a24","c-17a21"],
+  ["Julho",16,24,2,"19a24","c-21"],["Agosto",16,24,2,"19a24","c-21"],["Setembro",15,24,5,"19a24","c-17a21"],
+  ["Outubro",13,21,10,"14a19","c-13a17"],["Novembro",10,17,12,"8a14","c-8a13"],["Dezembro",8,15,13,"8a14","c-8a13"]
+];
+const COLORS = {"marinho":"#1f2f4a","creme":"#efe4cc","bege":"#d4bf98","branco":"#fbfbf8","preto":"#141414","cinza":"#9b9da1",
+  "carvão":"#3a3c40","oliva":"#6b6a3a","salva":"#9cae88","camel":"#c09868","espresso":"#4a3221","taupe":"#8c7e6c",
+  "bordô":"#6e1f2c","azul-bebé":"#a8c6e6","azul":"#3c68a6","verde":"#2d5b3a","vermelho":"#b4262f"};
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+let favs = new Set(store.get("favs", []));
+const byId = Object.fromEntries(BANDS.map(b => [b.id, b]));
+const now = new Date();
+const M = MONTHS[now.getMonth()];
+const state = { tm: M[1], tt: M[2], rain: false, offset: 0, band: null, view: "hoje", browse: "8a14", q: "" };
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+
+function dryBand(t) { return t < 8 ? "ate8" : t < 14 ? "8a14" : t < 19 ? "14a19" : t < 24 ? "19a24" : "calor"; }
+function rainBand(t) { return t < 8 ? "c-ate8" : t < 13 ? "c-8a13" : t < 17 ? "c-13a17" : t < 21 ? "c-17a21" : "c-21"; }
+
+function coatAdvice(t, rain) {
+  if (rain) {
+    if (t < 8) return "<b>Casaco:</b> parka marinha ou vermelha, fechada, com base + malha por baixo. Botas e luvas.";
+    if (t < 13) return "<b>Casaco:</b> parka com uma malha se a chuva for forte; corta-vento + half-zip + polo se forem aguaceiros.";
+    if (t < 17) return "<b>Casaco:</b> corta-vento Tommy com malha fina. Chapéu-de-chuva se apertar.";
+    if (t < 21) return "<b>Casaco:</b> corta-vento aberto por cima de polo ou t-shirt.";
+    return "<b>Casaco:</b> nenhum vestido. Corta-vento dobrado na mochila e chapéu-de-chuva.";
+  }
+  if (t < 8) return "<b>Casaco:</b> parka (marinha ou vermelha), blusão de couro ou de lã, com malha por baixo e luvas.";
+  if (t < 14) return "<b>Casaco:</b> bomber, blusão de lã ou de couro, ou a parka vermelha aberta.";
+  if (t < 19) return "<b>Casaco:</b> nenhum pesado. Malha ou sweat, com o corta-vento ou o bomber à mão.";
+  if (t < 24) return "<b>Casaco:</b> nenhum. Leva o corta-vento para a noite junto à ria.";
+  return "<b>Casaco:</b> nenhum. Uma camada fina na mochila para a noite.";
+}
+
+function swatches(f) {
+  const head = f.split("(")[0].toLowerCase();
+  const parts = head.split("+").map(s => s.trim()).filter(Boolean);
+  const dots = parts.map(p => COLORS[p]).filter(Boolean);
+  if (!dots.length) return "";
+  return '<span class="sw" aria-hidden="true">' + dots.map(c => `<i style="background:${c}"></i>`).join("") + "</span>";
+}
+
+function card(l, band) {
+  const on = favs.has(l.n);
+  const isRain = band && band.rain;
+  const watch = l.r;
+  return `<article class="card">
+    <div class="head"><span class="num">#${l.n}</span>
+      <span class="formula">${swatches(l.f)}${esc(l.f)}</span>
+      <button type="button" class="star" data-n="${l.n}" aria-pressed="${on}" aria-label="${on ? "Tirar dos favoritos" : "Marcar como favorito"}">${on ? "★" : "☆"}</button>
+    </div>
+    <div class="pieces">${esc(cap(l.p))}</div>
+    <div class="meta">
+      <span class="lbl">Calçado</span><span><b>${esc(l.c)}</b></span>
+      <span class="lbl">Extras</span><span>${esc(watch)}</span>
+    </div>
+    ${l.tip ? `<div class="tip"><b>Se a temperatura mudar:</b> ${esc(l.tip)}</div>` : ""}
+  </article>`;
+}
+
+function seeded(n) { let x = n; return () => { x = (x * 1103515245 + 12345) % 2147483648; return x / 2147483648; }; }
+function pickLooks(band, prefer) {
+  const daySeed = now.getFullYear() * 400 + now.getMonth() * 32 + now.getDate();
+  const rnd = seeded(daySeed + band.id.length * 97);
+  let list = band.looks.slice();
+  for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
+  list.sort((a, b) => (favs.has(b.n) - favs.has(a.n)) || ((prefer(b) ? 1 : 0) - (prefer(a) ? 1 : 0)));
+  const k = 10, start = (state.offset * k) % list.length;
+  const out = [];
+  for (let i = 0; i < Math.min(k, list.length); i++) out.push(list[(start + i) % list.length]);
+  return out;
+}
+
+function renderToday() {
+  $("#tm").value = state.tm; $("#tt").value = state.tt;
+  $("#tm-v").textContent = state.tm + " °C"; $("#tt-v").textContent = state.tt + " °C";
+  $("#b-seco").setAttribute("aria-pressed", !state.rain);
+  $("#b-chuva").setAttribute("aria-pressed", state.rain);
+  const swing = state.tt - state.tm;
+  $("#avg-hint").textContent = `Média de ${M[0].toLowerCase()} em Aveiro: ${M[1]} → ${M[2]} °C, ${M[3]} dias de chuva. Ajusta pela previsão do dia.`;
+  let band, prefer = () => false, extra = "";
+  if (state.rain && swing >= 7 && state.tm < 15) {
+    band = byId["c-muda"];
+    extra = `A tarde aquece ${swing} °C: camadas finas que vais tirando.`;
+  } else if (state.rain) {
+    band = byId[rainBand(state.tm)];
+  } else {
+    let id = dryBand(state.tm);
+    band = byId[id];
+    if (id === "calor") band = Object.assign({}, byId.calor, { id: "calor", title: "Calor: 24 °C ou mais (calças ou calções)", sec: "11 e 12", looks: byId.calor.looks.concat(byId.calcoes.looks) });
+    if (swing >= 6) { prefer = l => /tira a camada/.test(l.f); extra = `A tarde aquece ${swing} °C: leva uma camada que se tira (os looks “tira a camada à tarde” vêm primeiro).`; }
+  }
+  state.band = band.id;
+  const v = $("#verdict");
+  v.className = "verdict" + (band.rain ? " rain" : "");
+  v.innerHTML = `<span class="eyebrow">${band.rain ? "Dia de chuva" : "Dia seco"} · secção ${esc(band.sec)}</span>
+    <h2>${esc(band.title)}</h2>
+    <span class="hint">${esc(cap(band.aveiro.replace(/^Em Aveiro:?\s*/,"")))}</span>
+    ${extra ? `<span class="hint"><b>${esc(extra)}</b></span>` : ""}`;
+  const c = $("#coat"); c.className = "coat" + (band.rain ? " rain" : "");
+  c.innerHTML = coatAdvice(state.tm, state.rain);
+  $("#today-cards").innerHTML = pickLooks(band, prefer).map(l => card(l, band)).join("");
+  const more = $("#b-more");
+  more.hidden = band.looks.length <= 10;
+  more.textContent = "Outros 10 looks";
+  $("#b-all").textContent = band.looks.length <= 10 ? `Esta faixa tem ${band.looks.length} looks` : `Ver os ${band.looks.length} desta faixa`;
+}
+
+function renderChips() {
+  $("#band-chips").innerHTML = (favs.size ? `<button type="button" class="chip" data-b="favs" aria-pressed="${state.browse === "favs"}">★ Favoritos (${favs.size})</button>` : "") +
+    BANDS.map(b => `<button type="button" class="chip${b.rain ? " r" : ""}" data-b="${b.id}" aria-pressed="${state.browse === b.id}">${b.rain ? "☂ " : ""}${esc(b.title.split(":").slice(-1)[0].trim())}</button>`).join("");
+}
+function renderAll() {
+  renderChips();
+  const q = state.q.trim().toLowerCase();
+  let items = [];
+  if (q) {
+    BANDS.forEach(b => b.looks.forEach(l => { if ((l.f + " " + l.p + " " + l.c + " " + l.r).toLowerCase().includes(q)) items.push([l, b]); }));
+    $("#band-info").textContent = `${items.length} looks com “${state.q.trim()}”.`;
+  } else if (state.browse === "favs") {
+    BANDS.forEach(b => b.looks.forEach(l => { if (favs.has(l.n)) items.push([l, b]); }));
+    $("#band-info").textContent = "Os teus looks marcados com ★. Aparecem primeiro no separador Hoje.";
+  } else {
+    const b = byId[state.browse] || BANDS[1];
+    items = b.looks.map(l => [l, b]);
+    $("#band-info").innerHTML = `<b>${esc(b.title)}</b> · secção ${esc(b.sec)} · ${b.looks.length} looks. ${esc(cap(b.aveiro.replace(/^Em Aveiro:?\s*/,"")))}`;
+  }
+  $("#all-cards").innerHTML = items.map(([l, b]) => card(l, b)).join("") || '<p class="muted">Nada encontrado. Tenta outra palavra, por exemplo “bomber” ou “Seiko”.</p>';
+}
+
+function renderCal() {
+  $("#cal tbody").innerHTML = MONTHS.map((m, i) => `<tr class="${i === now.getMonth() ? "now" : ""}" data-m="${i}" style="cursor:pointer">
+    <td><b>${m[0]}</b></td><td class="n">${m[1]} → ${m[2]} °C</td><td class="n">${m[3]} dias</td>
+    <td>${esc(byId[m[4]].title.split(":").slice(-1)[0].trim())}</td></tr>`).join("");
+}
+
+function show(view) {
+  if (!["hoje", "looks", "aveiro", "regras"].includes(view)) view = "hoje";
+  state.view = view;
+  document.querySelectorAll(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + view));
+  document.querySelectorAll("nav.tabs a").forEach(a => { if (a.dataset.v === view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  if (view === "hoje") renderToday();
+  if (view === "looks") renderAll();
+  if (view === "aveiro") renderCal();
+  window.scrollTo(0, 0);
+}
+function route() {
+  const h = (location.hash || "").slice(1);
+  const m = h.match(/^t(\d{1,2})(-chuva)?$/);
+  if (m) { state.tm = Math.min(32, +m[1]); state.tt = Math.max(state.tm, state.tm + (M[2] - M[1])); state.rain = !!m[2]; state.offset = 0; show("hoje"); return; }
+  show(h || "hoje");
+}
+
+$("#tm").addEventListener("input", e => { state.tm = +e.target.value; if (state.tt < state.tm) state.tt = state.tm; state.offset = 0; renderToday(); });
+$("#tt").addEventListener("input", e => { state.tt = +e.target.value; if (state.tt < state.tm) state.tm = state.tt; state.offset = 0; renderToday(); });
+$("#b-seco").addEventListener("click", () => { state.rain = false; state.offset = 0; renderToday(); });
+$("#b-chuva").addEventListener("click", () => { state.rain = true; state.offset = 0; renderToday(); });
+$("#b-more").addEventListener("click", () => { state.offset++; renderToday(); });
+$("#b-all").addEventListener("click", () => { state.browse = state.band; state.q = ""; $("#q").value = ""; location.hash = "looks"; });
+$("#q").addEventListener("input", e => { state.q = e.target.value; renderAll(); });
+document.addEventListener("click", e => {
+  const s = e.target.closest(".star");
+  if (s) { const n = +s.dataset.n; favs.has(n) ? favs.delete(n) : favs.add(n); store.set("favs", [...favs]);
+    s.setAttribute("aria-pressed", favs.has(n)); s.textContent = favs.has(n) ? "★" : "☆";
+    if (state.view === "looks") renderChips(); return; }
+  const c = e.target.closest(".chip");
+  if (c) { state.browse = c.dataset.b; state.q = ""; $("#q").value = ""; renderAll(); return; }
+  const r = e.target.closest("#cal tr[data-m]");
+  if (r) { state.browse = MONTHS[+r.dataset.m][4]; location.hash = "looks"; }
+});
+document.querySelectorAll("nav.tabs a").forEach(a => a.addEventListener("click", () => { if (location.hash.slice(1) === a.dataset.v) show(a.dataset.v); }));
+window.addEventListener("hashchange", route);
+$("#today-label").textContent = "Aveiro · " + now.toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
+route();
+if ("serviceWorker" in navigator) { window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); }); }
+</script>
+</body>
+</html>
